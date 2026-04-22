@@ -42,7 +42,7 @@ export default function Preferences({ onNavigate }) {
           Tell Us What Matters
         </h1>
         <p className="text-xl text-on-surface-variant font-medium leading-relaxed">
-          Adjust your preferences below to get apartments best suited for you.
+          Help us find the perfect neighborhood and apartment for you.
         </p>
       </header>
 

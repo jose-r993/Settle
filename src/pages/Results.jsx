@@ -26,7 +26,7 @@ export default function Results({ onNavigate }) {
       <header className="mb-10">
         <h1 className="text-6xl font-extrabold tracking-tight text-on-surface mb-4">Best Matches</h1>
         <p className="text-xl text-on-surface-variant font-medium leading-relaxed max-w-2xl">
-          Based on your preferences — ranked by compatibility score.
+          Based on your preferences and lifestyle goals.
         </p>
       </header>
 

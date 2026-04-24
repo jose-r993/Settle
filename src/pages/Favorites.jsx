@@ -1,9 +1,8 @@
-import { useState } from 'react';
 import { LISTINGS } from '../data/listings';
+import { useFavorites } from '../context/FavoritesContext';
 
 export default function Favorites({ onNavigate }) {
-  const [saved, setSaved] = useState({ '1': true, '3': true, '6': true });
-  const toggleFav = (id) => setSaved(s => ({ ...s, [id]: !s[id] }));
+  const { favorites: saved, toggleFav } = useFavorites();
 
   const favListings = LISTINGS.filter(l => saved[l.id]);
 

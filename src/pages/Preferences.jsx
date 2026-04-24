@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { usePreferences } from '../context/PreferencesContext';
 
 const AMENITIES = [
   { id: 'parking',   label: 'Parking',        icon: 'local_parking' },
@@ -24,13 +24,11 @@ const EXPERIENCE = [
 ];
 
 export default function Preferences({ onNavigate }) {
-  const [budget, setBudget]       = useState(1500);
-  const [commute, setCommute]     = useState(30);
-  const [safety, setSafety]       = useState('medium');
-  const [amenities, setAmenities] = useState({ parking: true, laundry: true });
-  const [experience, setExperience] = useState('experienced');
+  const { prefs, updatePrefs } = usePreferences();
+  const { budget, commute, safety, amenities, experience } = prefs;
 
-  const toggleAmenity = (id) => setAmenities(a => ({ ...a, [id]: !a[id] }));
+  const toggleAmenity = (id) =>
+    updatePrefs({ amenities: { ...amenities, [id]: !amenities[id] } });
 
   const inputCls = 'w-full bg-surface-container-lowest shadow-sm rounded-lg px-4 py-3 text-on-surface font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-shadow';
 
@@ -63,7 +61,7 @@ export default function Preferences({ onNavigate }) {
           <div className="relative">
             <input
               type="range" min={500} max={5000} step={50}
-              value={budget} onChange={e => setBudget(Number(e.target.value))}
+              value={budget} onChange={e => updatePrefs({ budget: Number(e.target.value) })}
               className="w-full h-2 rounded-full appearance-none cursor-pointer accent-primary bg-surface-container-highest"
             />
             <div className="flex justify-between mt-2 text-[0.7rem] font-bold text-outline uppercase tracking-[0.1em]">
@@ -87,7 +85,7 @@ export default function Preferences({ onNavigate }) {
           <div className="relative">
             <input
               type="range" min={5} max={60} step={5}
-              value={commute} onChange={e => setCommute(Number(e.target.value))}
+              value={commute} onChange={e => updatePrefs({ commute: Number(e.target.value) })}
               className="w-full h-2 rounded-full appearance-none cursor-pointer accent-primary bg-surface-container-highest"
             />
             <div className="flex justify-between mt-2 text-[0.7rem] font-bold text-outline uppercase tracking-[0.1em]">
@@ -104,7 +102,7 @@ export default function Preferences({ onNavigate }) {
             {SAFETY.map(({ value, label, desc }) => (
               <button
                 key={value}
-                onClick={() => setSafety(value)}
+                onClick={() => updatePrefs({ safety: value })}
                 className={[
                   'flex flex-col items-start p-5 rounded-xl transition-all text-left',
                   safety === value
@@ -150,7 +148,7 @@ export default function Preferences({ onNavigate }) {
             {EXPERIENCE.map(({ value, label, desc, icon }) => (
               <button
                 key={value}
-                onClick={() => setExperience(value)}
+                onClick={() => updatePrefs({ experience: value })}
                 className={[
                   'flex flex-col items-start p-6 rounded-xl transition-all text-left',
                   experience === value

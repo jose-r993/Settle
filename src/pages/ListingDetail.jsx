@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { getListing } from '../data/listings';
+import { useFavorites } from '../context/FavoritesContext';
 
 export default function ListingDetail({ id, onNavigate }) {
   const listing = getListing(id);
   const [activeImg, setActiveImg] = useState(0);
-  const [saved, setSaved] = useState(false);
+  const { favorites, toggleFav } = useFavorites();
+  const saved = !!favorites[listing.id];
 
   const costs = listing.costs;
   const formatter = (n) => `$${n.toLocaleString()}`;
@@ -14,11 +16,11 @@ export default function ListingDetail({ id, onNavigate }) {
 
       {/* Back nav */}
       <button
-        onClick={() => onNavigate('/search')}
+        onClick={() => onNavigate('/results')}
         className="flex items-center gap-1 text-sm font-bold text-on-surface-variant hover:text-primary transition-colors mb-8"
       >
         <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-        Back to Search
+        Back to Results
       </button>
 
       {/* Image gallery */}
@@ -99,14 +101,14 @@ export default function ListingDetail({ id, onNavigate }) {
                 Call Property
               </button>
               <button
-                onClick={() => setSaved(s => !s)}
+                onClick={() => toggleFav(listing.id)}
                 className="flex items-center gap-2 bg-surface-container-high text-on-surface px-6 py-3 rounded-lg font-semibold hover:bg-surface-container-highest transition active:scale-95"
               >
                 <span
                   className="material-symbols-outlined text-primary-container text-[18px]"
                   style={{ fontVariationSettings: saved ? "'FILL' 1" : "'FILL' 0" }}
                 >favorite</span>
-                {saved ? 'Saved' : 'Save'}
+                {saved ? 'Saved to Favorites' : 'Save to Favorites'}
               </button>
               <button className="flex items-center gap-2 bg-surface-container-high text-on-surface px-6 py-3 rounded-lg font-semibold hover:bg-surface-container-highest transition active:scale-95">
                 <span className="material-symbols-outlined text-[18px]">forum</span>

@@ -1,24 +1,27 @@
-import { useState } from 'react';
 import { LISTINGS } from '../data/listings';
+import { useFavorites } from '../context/FavoritesContext';
+import { usePreferences } from '../context/PreferencesContext';
 
 const featured = LISTINGS[0];
 const grid     = LISTINGS.slice(1, 7);
 
 const WHY = [
-  'Close to your workplace — all results within your 30-min commute',
-  'Within your $3,000–$3,500 budget range with no hidden fees',
-  'High safety ratings above 4.5/5 in verified neighborhoods',
-];
-
-const PREFS = [
-  { icon: 'payments',      label: 'Budget',  value: 'Under $2,500/mo' },
-  { icon: 'directions_car',label: 'Commute', value: 'Max 30 min'      },
-  { icon: 'verified_user', label: 'Safety',  value: 'High priority'   },
+  'Close to your workplace — all results within your commute preference',
+  'Within your budget range with no hidden fees',
+  'High safety ratings in verified neighborhoods',
 ];
 
 export default function Results({ onNavigate }) {
-  const [favorites, setFavorites] = useState({ '1': true });
-  const toggleFav = (id) => setFavorites(f => ({ ...f, [id]: !f[id] }));
+  const { favorites, toggleFav } = useFavorites();
+  const { prefs } = usePreferences();
+
+  const safetyLabel = prefs.safety.charAt(0).toUpperCase() + prefs.safety.slice(1);
+
+  const PREFS = [
+    { icon: 'payments',       label: 'Budget',  value: `Under $${prefs.budget.toLocaleString()}/mo` },
+    { icon: 'directions_car', label: 'Commute', value: `Max ${prefs.commute} min` },
+    { icon: 'verified_user',  label: 'Safety',  value: `${safetyLabel} priority` },
+  ];
 
   return (
     <div className="pt-32 pb-24 px-8 max-w-screen-2xl mx-auto w-full">
@@ -51,15 +54,10 @@ export default function Results({ onNavigate }) {
         <div className="lg:col-span-8 space-y-8">
 
           {/* Featured card */}
-          <div
-            className="bg-surface-container-lowest rounded-xl overflow-hidden editorial-shadow hover:shadow-[0_28px_56px_rgba(27,27,32,0.10)] transition-all duration-300"
-          >
+          <div className="bg-surface-container-lowest rounded-xl overflow-hidden editorial-shadow hover:shadow-[0_28px_56px_rgba(27,27,32,0.10)] transition-all duration-300">
             <div className="flex flex-col md:flex-row">
               <div className="md:w-2/5 aspect-[4/3] md:aspect-auto overflow-hidden relative">
                 <img src={featured.image} alt={featured.name} className="w-full h-full object-cover" />
-                <div className="absolute top-4 left-4 bg-primary text-white text-[0.7rem] font-black uppercase tracking-[0.1em] px-3 py-1 rounded-full">
-                  {featured.match}% Match
-                </div>
               </div>
               <div className="flex-1 p-8">
                 <div className="flex justify-between items-start mb-2">
@@ -108,9 +106,6 @@ export default function Results({ onNavigate }) {
               >
                 <div className="aspect-[4/3] relative overflow-hidden">
                   <img src={listing.image} alt={listing.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute top-3 left-3 bg-primary text-white text-[0.65rem] font-black uppercase tracking-[0.1em] px-2.5 py-1 rounded-full">
-                    {listing.match}%
-                  </div>
                   <button
                     onClick={e => { e.stopPropagation(); toggleFav(listing.id); }}
                     className="absolute top-3 right-3 bg-white/90 backdrop-blur-md p-1.5 rounded-full hover:bg-white transition-colors shadow-sm"
@@ -178,33 +173,19 @@ export default function Results({ onNavigate }) {
             </button>
           </div>
 
-          {/* Compatibility legend */}
-          <div className="bg-surface-container-low p-8 rounded-xl editorial-shadow">
-            <p className="text-[0.75rem] font-bold uppercase tracking-[0.1em] text-on-surface-variant mb-6">Compatibility Score</p>
-            <div className="space-y-3">
-              {[['90–100%', 'Excellent match', 'bg-primary'], ['75–89%', 'Great match', 'bg-secondary'], ['60–74%', 'Good match', 'bg-tertiary/60']].map(([range, label, color]) => (
-                <div key={range} className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${color} shrink-0`} />
-                  <span className="text-sm font-bold text-on-surface">{range}</span>
-                  <span className="text-sm text-on-surface-variant font-medium">{label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* CTA to compare */}
+          {/* See More Results CTA */}
           <div className="bg-primary rounded-xl p-6 text-white relative overflow-hidden editorial-shadow">
             <div className="absolute -bottom-4 -right-4 opacity-20 pointer-events-none">
-              <span className="material-symbols-outlined text-[100px]">compare</span>
+              <span className="material-symbols-outlined text-[100px]">search</span>
             </div>
             <div className="relative z-10">
-              <h3 className="text-lg font-bold mb-2">Compare Neighborhoods</h3>
-              <p className="text-blue-100 text-sm mb-4 font-medium">See how Downtown, Uptown, and Deep Ellum stack up side by side.</p>
+              <h3 className="text-lg font-bold mb-2">See More Results</h3>
+              <p className="text-blue-100 text-sm mb-4 font-medium">Explore the full listing database and filter by your exact criteria.</p>
               <button
-                onClick={() => onNavigate('/compare')}
+                onClick={() => onNavigate('/search')}
                 className="w-full bg-white text-primary py-2.5 rounded-full font-bold text-[0.75rem] uppercase tracking-[0.1em] hover:bg-surface-bright transition active:scale-95"
               >
-                View Comparison
+                Browse All Listings
               </button>
             </div>
           </div>

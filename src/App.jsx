@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
+import { FavoritesProvider } from './context/FavoritesContext';
+import { PreferencesProvider } from './context/PreferencesContext';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 
@@ -105,7 +107,11 @@ function Router() {
 export default function App() {
   return (
     <AuthProvider>
-      <Router />
+      <PreferencesProvider>
+        <FavoritesProvider>
+          <Router />
+        </FavoritesProvider>
+      </PreferencesProvider>
     </AuthProvider>
   );
 }

@@ -15,15 +15,15 @@ export default function Navbar({ showSearch = false, onNavigate }) {
             <img src="/ZillowLogo.png" alt="Zillow" className="h-6 w-6 rounded-full" />
             Settle
           </button>
+        </div>
+
+        <div className="flex items-center gap-4">
           {user && (
             <div className="hidden md:flex gap-6">
               <button onClick={() => nav('/favorites')} className="text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">Saved</button>
               <button onClick={() => nav('/faq')}       className="text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">Help</button>
             </div>
           )}
-        </div>
-
-        <div className="flex items-center gap-4">
           {user ? (
             <button
               onClick={() => nav('/settings')}

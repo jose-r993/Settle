@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { usePreferences } from '../context/PreferencesContext';
+import { useFavorites } from '../context/FavoritesContext';
 
 const RECENTLY_VIEWED = [
   { id: '1', price: '$2,350', rating: 4.8, neighborhood: 'Downtown, Dallas',       beds: 2, baths: 1, sqft: 850,  image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80' },
@@ -20,9 +22,21 @@ const IMPROVEMENTS = [
 ];
 
 export default function Dashboard({ onNavigate }) {
-  const [refine, setRefine]     = useState('');
-  const [favorites, setFavorites] = useState({ '1': true });
-  const toggleFav = (id) => setFavorites(f => ({ ...f, [id]: !f[id] }));
+  const [refine, setRefine] = useState('');
+  const { prefs, updatePrefs } = usePreferences();
+  const { favorites, toggleFav } = useFavorites();
+  const safetyLabel = prefs.safety.charAt(0).toUpperCase() + prefs.safety.slice(1);
+  const keywords = prefs.keywords ?? [];
+
+  const addKeyword = () => {
+    const trimmed = refine.trim();
+    if (!trimmed || keywords.includes(trimmed)) return;
+    updatePrefs({ keywords: [...keywords, trimmed] });
+    setRefine('');
+  };
+
+  const removeKeyword = (kw) =>
+    updatePrefs({ keywords: keywords.filter(k => k !== kw) });
 
   return (
     <div className="pt-32 pb-24 px-8 max-w-screen-2xl mx-auto w-full">
@@ -41,9 +55,9 @@ export default function Dashboard({ onNavigate }) {
       {/* ── Preference Summary (surface-container-low cards on surface bg) ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-16">
         {[
-          { icon: 'payments',      label: 'Budget',  value: 'Under $2,500/mo' },
-          { icon: 'directions_car',label: 'Commute', value: 'Max 30 mins'     },
-          { icon: 'verified_user', label: 'Safety',  value: 'High safety rating' },
+          { icon: 'payments',      label: 'Budget',  value: `Under $${prefs.budget.toLocaleString()}/mo` },
+          { icon: 'directions_car',label: 'Commute', value: `Max ${prefs.commute} min`                  },
+          { icon: 'verified_user', label: 'Safety',  value: `${safetyLabel} safety rating`              },
         ].map(({ icon, label, value }) => (
           /* surface-container-low sits on surface — tonal shift creates boundary, no border */
           <div
@@ -100,19 +114,40 @@ export default function Dashboard({ onNavigate }) {
           <section className="bg-surface-container-low p-10 rounded-xl">
             <h3 className="text-2xl font-bold text-on-surface mb-6">Refine your search</h3>
             <div className="flex flex-col md:flex-row gap-4">
-              {/* Input: surface-container-lowest bg + shadow-sm + focus ring */}
               <input
                 value={refine}
                 onChange={e => setRefine(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addKeyword()}
                 className="flex-grow bg-surface-container-lowest shadow-sm rounded-lg px-6 py-4 text-on-surface placeholder:text-outline font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-shadow"
                 placeholder="Add keywords (e.g. 'Rooftop garden', 'In-unit laundry')"
                 type="text"
               />
-              {/* Primary button: gradient, rounded-lg (4px) */}
-              <button className="bg-gradient-to-br from-primary to-primary-container text-white px-8 py-4 rounded-lg font-bold hover:shadow-lg transition-all active:scale-95 whitespace-nowrap">
+              <button
+                onClick={addKeyword}
+                className="bg-gradient-to-br from-primary to-primary-container text-white px-8 py-4 rounded-lg font-bold hover:shadow-lg transition-all active:scale-95 whitespace-nowrap"
+              >
                 Update Results
               </button>
             </div>
+            {keywords.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {keywords.map(kw => (
+                  <span
+                    key={kw}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[0.75rem] font-bold uppercase tracking-[0.1em]"
+                  >
+                    {kw}
+                    <button
+                      onClick={() => removeKeyword(kw)}
+                      className="hover:text-primary-container transition-colors leading-none"
+                      aria-label={`Remove ${kw}`}
+                    >
+                      <span className="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </section>
         </div>
 

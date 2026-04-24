@@ -8,6 +8,7 @@ const DEFAULT_PREFS = {
   safety: 'medium',
   amenities: { parking: true, laundry: true },
   experience: 'experienced',
+  keywords: [],
 };
 
 export function PreferencesProvider({ children }) {

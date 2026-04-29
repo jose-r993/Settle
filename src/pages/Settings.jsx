@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/SupabaseAuthContext';
 
 const SECTION_ROW = ({ label, value, icon }) => (
   <div className="flex items-center justify-between py-4">
@@ -62,8 +62,8 @@ export default function Settings({ onNavigate }) {
             <p className="text-[0.75rem] font-bold uppercase tracking-[0.1em] text-on-surface-variant mb-6">Account</p>
             <div className="divide-y divide-surface-container">
               <SECTION_ROW label="Personal Information" value="Update your name, email, and photo" icon="person" />
-              <SECTION_ROW label="Phone Number"          value={user?.phone ?? '(555) 000-0000'}   icon="phone" />
-              <SECTION_ROW label="Password"              value="Last changed 30 days ago"          icon="lock" />
+              <SECTION_ROW label="Phone Number" value={user?.phone ?? '(555) 000-0000'} icon="phone" />
+              <SECTION_ROW label="Password" value="Last changed 30 days ago" icon="lock" />
             </div>
           </div>
 
@@ -71,9 +71,9 @@ export default function Settings({ onNavigate }) {
           <div className="bg-surface-container-low p-8 rounded-xl editorial-shadow">
             <p className="text-[0.75rem] font-bold uppercase tracking-[0.1em] text-on-surface-variant mb-6">Location & Property</p>
             <div className="divide-y divide-surface-container">
-              <SECTION_ROW label="Current Address"     value="123 Main St, Apt 4, Austin, TX 78701" icon="home" />
-              <SECTION_ROW label="Target City"         value={user?.city ?? 'Dallas, TX'}           icon="location_on" />
-              <SECTION_ROW label="Relocation Timeline" value="Within 3 months"                      icon="calendar_month" />
+              <SECTION_ROW label="Current Address" value="123 Main St, Apt 4, Austin, TX 78701" icon="home" />
+              <SECTION_ROW label="Target City" value={user?.city ?? 'Dallas, TX'} icon="location_on" />
+              <SECTION_ROW label="Relocation Timeline" value="Within 3 months" icon="calendar_month" />
             </div>
           </div>
 
@@ -104,10 +104,10 @@ export default function Settings({ onNavigate }) {
           <div className="bg-surface-container-low p-8 rounded-xl editorial-shadow">
             <p className="text-[0.75rem] font-bold uppercase tracking-[0.1em] text-on-surface-variant mb-6">Notifications</p>
             {[
-              { label: 'New Listing Alerts',   desc: 'When listings matching your preferences are added', on: true  },
-              { label: 'Price Change Alerts',  desc: 'When saved listing prices drop',                   on: true  },
-              { label: 'Tour Reminders',       desc: '24 hours before a scheduled tour',                 on: true  },
-              { label: 'Marketing Emails',     desc: 'Tips, trends, and neighborhood news',              on: false },
+              { label: 'New Listing Alerts', desc: 'When listings matching your preferences are added', on: true },
+              { label: 'Price Change Alerts', desc: 'When saved listing prices drop', on: true },
+              { label: 'Tour Reminders', desc: '24 hours before a scheduled tour', on: true },
+              { label: 'Marketing Emails', desc: 'Tips, trends, and neighborhood news', on: false },
             ].map(({ label, desc, on }) => (
               <div key={label} className="flex items-center justify-between py-4">
                 <div>
@@ -128,8 +128,8 @@ export default function Settings({ onNavigate }) {
             <p className="text-[0.75rem] font-bold uppercase tracking-[0.1em] text-on-surface-variant mb-6">Quick Actions</p>
             <div className="space-y-2">
               {[
-                { label: 'Help Center',      icon: 'help',            action: () => onNavigate('/faq') },
-                { label: 'Contact Support',  icon: 'support_agent',   action: () => onNavigate('/contact') },
+                { label: 'Help Center', icon: 'help', action: () => onNavigate('/faq') },
+                { label: 'Contact Support', icon: 'support_agent', action: () => onNavigate('/contact') },
               ].map(({ label, icon, action }) => (
                 <button
                   key={label}

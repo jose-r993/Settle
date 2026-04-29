@@ -1,31 +1,98 @@
 import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/SupabaseAuthContext';
+import { getPasswordStrength } from '../utils/validators';
 
 export default function Login({ onNavigate }) {
-  const { login, signup } = useAuth();
-  const [tab, setTab]   = useState('signup');
+  const { login, signup, clearError, loginWithGoogle, useSupabase } = useAuth();
+  const [tab, setTab] = useState('signup');
   const [form, setForm] = useState({ name: '', email: '', city: '', password: '' });
   const [agreed, setAgreed] = useState(false);
-  const [error, setError]   = useState('');
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({ strength: 'none', score: 0 });
   const isLogin = tab === 'login';
 
-  const set = field => e => setForm({ ...form, [field]: e.target.value });
+  const set = field => e => {
+    const value = e.target.value;
+    setForm({ ...form, [field]: value });
 
-  const handleSubmit = e => {
+    if (field === 'password' && !isLogin) {
+      setPasswordStrength(getPasswordStrength(value));
+    }
+
+    if (error) setError('');
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (isLogin) {
-      if (!login(form.email, form.password)) return setError('Invalid email or password.');
-      onNavigate('/dashboard');
-    } else {
-      if (!agreed) return setError('Please agree to the Terms of Service.');
-      if (!form.name || !form.email || !form.city || !form.password) return setError('Please fill in all fields.');
-      signup(form.name, form.email, form.city);
-      onNavigate('/preferences');
+    setIsSubmitting(true);
+
+    try {
+      if (isLogin) {
+        const result = await login(form.email, form.password);
+        if (result.success) {
+          setTimeout(() => {
+            onNavigate('/dashboard');
+          }, 300);
+        } else {
+          setError(result.error);
+          setIsSubmitting(false);
+        }
+      } else {
+        if (!agreed) {
+          setError('Please agree to the Terms of Service.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        const result = await signup({
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          targetCity: form.city,
+        });
+
+        if (result.success) {
+          setTimeout(() => {
+            onNavigate('/preferences');
+          }, 300);
+        } else {
+          setError(result.error);
+          setIsSubmitting(false);
+        }
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+      setIsSubmitting(false);
     }
   };
 
-  const handleGoogle = () => { login('demo@settle.com', 'password'); onNavigate('/dashboard'); };
+  const handleGoogle = async () => {
+    setIsSubmitting(true);
+    setError('');
+
+    try {
+      if (!useSupabase) {
+        const result = await login('demo@settle.com', 'password');
+        if (result.success) {
+          onNavigate('/dashboard');
+        } else {
+          setError(result.error);
+        }
+      } else {
+        const result = await loginWithGoogle();
+        if (!result.success) {
+          setError(result.error || 'Failed to initiate Google sign-in');
+        }
+      }
+    } catch (err) {
+      console.error('Google OAuth error:', err);
+      setError(err.message || 'An error occurred with Google sign-in');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   /* Shared input style — surface-container-lowest + shadow-sm + focus ring, NO border */
   const inputCls = 'w-full bg-surface-container-lowest shadow-sm rounded-lg px-4 py-3 text-on-surface placeholder:text-outline font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-shadow';
@@ -52,7 +119,7 @@ export default function Login({ onNavigate }) {
             {['login', 'signup'].map(t => (
               <button
                 key={t}
-                onClick={() => { setTab(t); setError(''); }}
+                onClick={() => { setTab(t); setError(''); clearError(); setPasswordStrength({ strength: 'none', score: 0 }); }}
                 className={[
                   'flex-1 py-2 text-sm font-bold rounded-lg transition-all',
                   tab === t
@@ -100,6 +167,29 @@ export default function Login({ onNavigate }) {
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">lock</span>
                 <input className={`${inputCls} pl-10`} type="password" placeholder="••••••••" value={form.password} onChange={set('password')} />
               </div>
+              {!isLogin && form.password && (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${passwordStrength.strength === 'strong' ? 'bg-green-500 w-full' :
+                          passwordStrength.strength === 'medium' ? 'bg-yellow-500 w-2/3' :
+                            'bg-red-500 w-1/3'
+                          }`}
+                      />
+                    </div>
+                    <span className={`text-[0.625rem] font-bold uppercase tracking-wider ${passwordStrength.strength === 'strong' ? 'text-green-600' :
+                      passwordStrength.strength === 'medium' ? 'text-yellow-600' :
+                        'text-red-600'
+                      }`}>
+                      {passwordStrength.strength}
+                    </span>
+                  </div>
+                  <p className="text-[0.625rem] text-on-surface-variant">
+                    Use 8+ characters with uppercase, lowercase, and numbers
+                  </p>
+                </div>
+              )}
             </div>
 
             {!isLogin && (
@@ -121,8 +211,15 @@ export default function Login({ onNavigate }) {
             )}
 
             {/* Primary CTA — gradient, rounded-lg */}
-            <button type="submit" className="w-full bg-gradient-to-br from-primary to-primary-container text-white py-4 rounded-lg font-bold hover:shadow-lg transition-all active:scale-95 mt-1">
-              {isLogin ? 'Login' : 'Create Account'}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-gradient-to-br from-primary to-primary-container text-white py-4 rounded-lg font-bold hover:shadow-lg transition-all active:scale-95 mt-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isSubmitting && (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              )}
+              {isSubmitting ? 'Please wait...' : (isLogin ? 'Login' : 'Create Account')}
             </button>
 
             {/* Divider — spacing only, no line */}
@@ -136,13 +233,14 @@ export default function Login({ onNavigate }) {
             <button
               type="button"
               onClick={handleGoogle}
-              className="w-full bg-surface-container-highest text-on-surface py-3 rounded-lg font-semibold text-sm hover:bg-surface-dim transition active:scale-95 flex items-center justify-center gap-2.5"
+              disabled={isSubmitting}
+              className="w-full bg-surface-container-highest text-on-surface py-3 rounded-lg font-semibold text-sm hover:bg-surface-dim transition active:scale-95 flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
               Continue with Google
             </button>
@@ -176,9 +274,9 @@ export default function Login({ onNavigate }) {
           {/* Feature list — elevated cards (surface-container-lowest) on surface-container-low */}
           <div className="flex flex-col gap-5">
             {[
-              { icon: 'home_work',      text: 'Personalized neighborhood recommendations based on your preferences' },
-              { icon: 'verified_user',  text: 'Safety insights and neighborhood comparisons for peace of mind' },
-              { icon: 'auto_awesome',   text: 'AI-powered recommendations to simplify your rental experience' },
+              { icon: 'home_work', text: 'Personalized neighborhood recommendations based on your preferences' },
+              { icon: 'verified_user', text: 'Safety insights and neighborhood comparisons for peace of mind' },
+              { icon: 'auto_awesome', text: 'AI-powered recommendations to simplify your rental experience' },
             ].map(({ icon, text }) => (
               <div key={icon} className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-surface-container-lowest editorial-shadow flex items-center justify-center shrink-0">

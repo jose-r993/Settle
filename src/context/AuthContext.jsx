@@ -1,40 +1,150 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import users from '../data/users.json';
+import { authService } from '../services/authService';
+import { authConfig } from '../data/authConfig';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem('settle_user');
-    if (stored) setUser(JSON.parse(stored));
+    initializeAuth();
   }, []);
 
-  const login = (email, password) => {
-    const match = users.find(
-      (u) => u.email === email && u.password === password
-    );
-    if (!match) return false;
-    const { password: _, ...safeUser } = match;
-    setUser(safeUser);
-    localStorage.setItem('settle_user', JSON.stringify(safeUser));
-    return true;
+  const initializeAuth = () => {
+    try {
+      const storedUser = localStorage.getItem(authConfig.sessionConfig.storageKey);
+      const storedSession = authService.getStoredSession();
+
+      if (storedUser && storedSession) {
+        const validation = authService.validateSession(storedSession.token);
+
+        if (validation.valid) {
+          setUser(JSON.parse(storedUser));
+          setSession(storedSession);
+        } else {
+          authService.clearSession();
+        }
+      }
+    } catch (err) {
+      console.error('Error initializing auth:', err);
+      authService.clearSession();
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const signup = (name, email, targetCity) => {
-    const newUser = { id: Date.now().toString(), name, email, targetCity };
-    setUser(newUser);
-    localStorage.setItem('settle_user', JSON.stringify(newUser));
+  const login = async (email, password) => {
+    setError(null);
+
+    try {
+      const result = await authService.login(email, password);
+
+      if (result.success) {
+        setUser(result.user);
+        setSession(result.session);
+        localStorage.setItem(authConfig.sessionConfig.storageKey, JSON.stringify(result.user));
+        return { success: true };
+      } else {
+        setError(result.error);
+        return { success: false, error: result.error };
+      }
+    } catch (err) {
+      const errorMsg = 'An unexpected error occurred during login';
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  };
+
+  const signup = async (userData) => {
+    setError(null);
+
+    try {
+      const result = await authService.signup(userData);
+
+      if (result.success) {
+        setUser(result.user);
+        setSession(result.session);
+        localStorage.setItem(authConfig.sessionConfig.storageKey, JSON.stringify(result.user));
+        return { success: true, user: result.user };
+      } else {
+        setError(result.error);
+        return { success: false, error: result.error, errors: result.errors };
+      }
+    } catch (err) {
+      const errorMsg = 'An unexpected error occurred during signup';
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
+    }
   };
 
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem('settle_user');
+    try {
+      if (user) {
+        authService.logout(user.id);
+      }
+      setUser(null);
+      setSession(null);
+      setError(null);
+    } catch (err) {
+      console.error('Error during logout:', err);
+    }
+  };
+
+  const updateProfile = async (updates) => {
+    if (!user) return { success: false, error: 'No user logged in' };
+
+    try {
+      const result = authService.updateUserProfile(user.id, updates);
+
+      if (result.success) {
+        setUser(result.user);
+        localStorage.setItem(authConfig.sessionConfig.storageKey, JSON.stringify(result.user));
+        return { success: true, user: result.user };
+      }
+
+      return result;
+    } catch (err) {
+      return { success: false, error: 'Failed to update profile' };
+    }
+  };
+
+  const hasPermission = (permission) => {
+    return authService.hasPermission(user, permission);
+  };
+
+  const hasRole = (role) => {
+    return authService.hasRole(user, role);
+  };
+
+  const isAuthenticated = () => {
+    return !!user && !!session;
+  };
+
+  const clearError = () => {
+    setError(null);
+  };
+
+  const value = {
+    user,
+    session,
+    loading,
+    error,
+    login,
+    logout,
+    signup,
+    updateProfile,
+    hasPermission,
+    hasRole,
+    isAuthenticated,
+    clearError,
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, signup }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

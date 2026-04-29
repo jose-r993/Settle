@@ -4,13 +4,92 @@
     "name": "Demo User",
     "email": "demo@settle.com",
     "password": "password",
-    "targetCity": "Dallas"
+    "role": "user",
+    "targetCity": "Dallas",
+    "preferences": {
+      "budget": {
+        "min": 1000,
+        "max": 2500
+      },
+      "bedrooms": 2,
+      "bathrooms": 1,
+      "amenities": [
+        "parking",
+        "gym",
+        "pool"
+      ],
+      "neighborhoods": [
+        "Downtown",
+        "Uptown"
+      ]
+    },
+    "profile": {
+      "phone": "",
+      "occupation": "Software Engineer",
+      "moveInDate": "",
+      "pets": false,
+      "smokingPreference": "non-smoking"
+    },
+    "favorites": [],
+    "savedSearches": [],
+    "notifications": {
+      "email": true,
+      "push": true,
+      "sms": false
+    },
+    "metadata": {
+      "createdAt": "2026-01-15T10:00:00.000Z",
+      "updatedAt": "2026-04-20T15:30:00.000Z",
+      "lastLogin": null,
+      "loginCount": 0,
+      "isActive": true,
+      "isVerified": true
+    }
   },
   {
     "id": "2",
     "name": "Jose Rogel",
     "email": "jose@settle.com",
     "password": "password",
-    "targetCity": "Dallas"
+    "role": "admin",
+    "targetCity": "Dallas",
+    "preferences": {
+      "budget": {
+        "min": 1500,
+        "max": 3000
+      },
+      "bedrooms": 2,
+      "bathrooms": 2,
+      "amenities": [
+        "parking",
+        "gym"
+      ],
+      "neighborhoods": [
+        "Uptown",
+        "Oak Lawn"
+      ]
+    },
+    "profile": {
+      "phone": "",
+      "occupation": "Product Manager",
+      "moveInDate": "",
+      "pets": false,
+      "smokingPreference": "non-smoking"
+    },
+    "favorites": [],
+    "savedSearches": [],
+    "notifications": {
+      "email": true,
+      "push": true,
+      "sms": true
+    },
+    "metadata": {
+      "createdAt": "2026-01-10T08:00:00.000Z",
+      "updatedAt": "2026-04-25T12:00:00.000Z",
+      "lastLogin": null,
+      "loginCount": 0,
+      "isActive": true,
+      "isVerified": true
+    }
   }
 ]

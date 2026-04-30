@@ -3,10 +3,10 @@ import { usePreferences } from '../context/PreferencesContext';
 import { useFavorites } from '../context/FavoritesContext';
 
 const RECENTLY_VIEWED = [
-  { id: '1', price: '$2,350', rating: 4.8, neighborhood: 'Downtown, Dallas',       beds: 2, baths: 1, sqft: 850,  image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80' },
-  { id: '2', price: '$2,100', rating: 4.9, neighborhood: 'Uptown, Dallas',          beds: 1, baths: 1, sqft: 620,  image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80' },
-  { id: '3', price: '$2,450', rating: 4.7, neighborhood: 'Deep Ellum, Dallas',      beds: 2, baths: 2, sqft: 1100, image: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600&q=80' },
-  { id: '4', price: '$2,275', rating: 4.8, neighborhood: 'Lower Greenville, Dallas',beds: 1, baths: 1, sqft: 780,  image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&q=80' },
+  { id: '1', name: 'The McKenzie Luxury Highrise', price: '$2,350', rating: 4.8, neighborhood: 'Downtown, Dallas',        beds: 2, baths: 1, sqft: 850,  image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80' },
+  { id: '2', name: 'Loft 404 Apartments',          price: '$2,100', rating: 4.9, neighborhood: 'Uptown, Dallas',           beds: 1, baths: 1, sqft: 620,  image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80' },
+  { id: '3', name: 'The Katy Trail Apartments',    price: '$2,450', rating: 4.7, neighborhood: 'Deep Ellum, Dallas',       beds: 2, baths: 2, sqft: 1100, image: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600&q=80' },
+  { id: '4', name: 'The Alton Oak',                price: '$2,275', rating: 4.8, neighborhood: 'Lower Greenville, Dallas', beds: 1, baths: 1, sqft: 780,  image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&q=80' },
 ];
 
 const FOCUS = [
@@ -207,7 +207,7 @@ export default function Dashboard({ onNavigate }) {
           {/* Headline (2.25rem / extrabold) */}
           <h2 className="text-4xl font-extrabold tracking-tight text-on-surface">Recently Viewed</h2>
           <button onClick={() => onNavigate('/search')} className="text-primary font-bold hover:underline flex items-center gap-2 text-sm">
-            View All History
+            Search for More Places
             <span className="material-symbols-outlined text-sm">arrow_forward</span>
           </button>
         </div>
@@ -243,15 +243,15 @@ export default function Dashboard({ onNavigate }) {
               </div>
 
               <div className="p-5">
-                <div className="flex justify-between items-center mb-2">
-                  {/* Sub-headline weight for price */}
+                <h3 className="font-bold text-on-surface text-base leading-tight mb-1">{listing.name}</h3>
+                <p className="text-on-surface-variant text-sm font-medium mb-2">{listing.neighborhood}</p>
+                <div className="flex justify-between items-center mb-3">
                   <span className="text-xl font-bold text-on-surface">{listing.price}/mo</span>
                   <div className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-tertiary text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                     <span className="text-sm font-semibold text-on-surface">{listing.rating}</span>
                   </div>
                 </div>
-                <p className="text-on-surface-variant font-medium mb-4">{listing.neighborhood}</p>
                 {/* Label typography */}
                 <div className="flex gap-3 text-[0.7rem] font-bold uppercase tracking-[0.1em] text-outline">
                   <span>{listing.beds} bd</span><span>·</span>

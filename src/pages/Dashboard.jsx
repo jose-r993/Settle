@@ -2,6 +2,51 @@ import { useState } from 'react';
 import { usePreferences } from '../context/PreferencesContext';
 import { useFavorites } from '../context/FavoritesContext';
 
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+async function parsePrefsWithGemini(input) {
+  const prompt = `You are a preference parser for an apartment search app. Extract structured preferences from the user's natural language input.
+
+User input: "${input}"
+
+Return ONLY valid JSON with this exact structure (use null for any field not mentioned):
+{
+  "keywords": ["keyword1", "keyword2"],
+  "budget": 2000,
+  "commute": 30,
+  "safety": "high"
+}
+
+Rules:
+- keywords: short amenity/feature labels extracted from the input (e.g. "Rooftop", "Pet Friendly", "Natural Light", "In-Unit Laundry"). Empty array if none mentioned.
+- budget: monthly rent cap in dollars as a plain number, or null
+- commute: max commute in minutes as a number between 5 and 60, or null
+- safety: one of "low", "medium", "high", or null`;
+
+  if (!GEMINI_API_KEY) throw new Error('VITE_GEMINI_API_KEY not set');
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gemini ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  let text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
+  text = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
+  return JSON.parse(text);
+}
+
 const RECENTLY_VIEWED = [
   { id: '1', name: 'The McKenzie Luxury Highrise', price: '$2,350', rating: 4.8, neighborhood: 'Downtown, Dallas',        beds: 2, baths: 1, sqft: 850,  image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80' },
   { id: '2', name: 'Loft 404 Apartments',          price: '$2,100', rating: 4.9, neighborhood: 'Uptown, Dallas',           beds: 1, baths: 1, sqft: 620,  image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80' },
@@ -23,16 +68,42 @@ const IMPROVEMENTS = [
 
 export default function Dashboard({ onNavigate }) {
   const [refine, setRefine] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState(null);
   const { prefs, updatePrefs } = usePreferences();
   const { favorites, toggleFav } = useFavorites();
   const safetyLabel = prefs.safety.charAt(0).toUpperCase() + prefs.safety.slice(1);
   const keywords = prefs.keywords ?? [];
 
-  const addKeyword = () => {
+  const handleRefine = async () => {
     const trimmed = refine.trim();
-    if (!trimmed || keywords.includes(trimmed)) return;
-    updatePrefs({ keywords: [...keywords, trimmed] });
+    if (!trimmed) return;
+    setAiLoading(true);
+    setAiSummary(null);
+    try {
+      const parsed = await parsePrefsWithGemini(trimmed);
+      const updates = {};
+      const changes = [];
+
+      if (parsed.budget)   { updates.budget = parsed.budget;   changes.push(`Budget → $${parsed.budget.toLocaleString()}/mo`); }
+      if (parsed.commute)  { updates.commute = parsed.commute; changes.push(`Commute → max ${parsed.commute} min`); }
+      if (parsed.safety)   { updates.safety = parsed.safety;   changes.push(`Safety → ${parsed.safety}`); }
+
+      const newKeywords = (parsed.keywords ?? []).filter(k => k && !keywords.includes(k));
+      if (newKeywords.length) {
+        updates.keywords = [...keywords, ...newKeywords];
+        changes.push(`Added: ${newKeywords.join(', ')}`);
+      }
+
+      if (Object.keys(updates).length) updatePrefs(updates);
+      setAiSummary(changes.length ? changes : ['No new preferences detected — try being more specific.']);
+    } catch (err) {
+      console.error('[Refine search]', err);
+      if (!keywords.includes(trimmed)) updatePrefs({ keywords: [...keywords, trimmed] });
+      setAiSummary([`Saved "${trimmed}" as a keyword`]);
+    }
     setRefine('');
+    setAiLoading(false);
   };
 
   const removeKeyword = (kw) =>
@@ -110,25 +181,55 @@ export default function Dashboard({ onNavigate }) {
             </div>
           </section>
 
-          {/* Refine search — surface-container-low tonal section */}
+          {/* Refine search — Gemini-powered */}
           <section className="bg-surface-container-low p-10 rounded-xl">
-            <h3 className="text-2xl font-bold text-on-surface mb-6">Refine your search</h3>
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-2xl font-bold text-on-surface">Refine your search</h3>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[0.7rem] font-bold uppercase tracking-[0.1em]">
+                <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
+                AI
+              </span>
+            </div>
+            <p className="text-sm text-on-surface-variant font-medium mb-6">
+              Describe what you're looking for in plain language — AI will update your preferences automatically.
+            </p>
             <div className="flex flex-col md:flex-row gap-4">
               <input
                 value={refine}
                 onChange={e => setRefine(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addKeyword()}
-                className="flex-grow bg-surface-container-lowest shadow-sm rounded-lg px-6 py-4 text-on-surface placeholder:text-outline font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-shadow"
-                placeholder="Add keywords (e.g. 'Rooftop garden', 'In-unit laundry')"
+                onKeyDown={e => e.key === 'Enter' && !aiLoading && handleRefine()}
+                disabled={aiLoading}
+                className="flex-grow bg-surface-container-lowest shadow-sm rounded-lg px-6 py-4 text-on-surface placeholder:text-outline font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-shadow disabled:opacity-50"
+                placeholder="e.g. 'Quiet place near a park, under $2k, pet-friendly'"
                 type="text"
               />
               <button
-                onClick={addKeyword}
-                className="bg-gradient-to-br from-primary to-primary-container text-white px-8 py-4 rounded-lg font-bold hover:shadow-lg transition-all active:scale-95 whitespace-nowrap"
+                onClick={handleRefine}
+                disabled={aiLoading || !refine.trim()}
+                className="bg-gradient-to-br from-primary to-primary-container text-white px-8 py-4 rounded-lg font-bold hover:shadow-lg transition-all active:scale-95 whitespace-nowrap disabled:opacity-60 disabled:active:scale-100 flex items-center gap-2"
               >
-                Update Results
+                {aiLoading
+                  ? <><span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> Analyzing…</>
+                  : 'Update Results'
+                }
               </button>
             </div>
+
+            {/* AI result summary */}
+            {aiSummary && (
+              <div className="mt-4 bg-primary/5 rounded-xl px-5 py-4 flex items-start gap-3">
+                <span className="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5">auto_awesome</span>
+                <div>
+                  <p className="text-[0.75rem] font-bold uppercase tracking-[0.1em] text-primary mb-1">Preferences updated</p>
+                  <ul className="space-y-0.5">
+                    {aiSummary.map(line => (
+                      <li key={line} className="text-sm text-on-surface-variant font-medium">{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
             {keywords.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-4">
                 {keywords.map(kw => (

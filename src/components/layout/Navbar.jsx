@@ -1,4 +1,4 @@
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/SupabaseAuthContext';
 
 export default function Navbar({ showSearch = false, onNavigate }) {
   const { user, logout } = useAuth();
@@ -22,7 +22,7 @@ export default function Navbar({ showSearch = false, onNavigate }) {
             <div className="hidden md:flex gap-6">
               <button onClick={() => nav('/preferences')} className="text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">Preferences</button>
               <button onClick={() => nav('/favorites')}  className="text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">Saved</button>
-              <button onClick={() => nav('/faq')}        className="text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">Help</button>
+              <button onClick={() => nav('/faq')}  className="text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">Help</button>
             </div>
           )}
           {user ? (

@@ -1,31 +1,33 @@
 import { useState, useEffect } from 'react';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from './context/SupabaseAuthContext';
 import { FavoritesProvider } from './context/FavoritesContext';
 import { PreferencesProvider } from './context/PreferencesContext';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 
 // Pages
-import Login        from './pages/Login';
-import Dashboard    from './pages/Dashboard';
-import Preferences  from './pages/Preferences';
-import Results      from './pages/Results';
-import Search       from './pages/Search';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Preferences from './pages/Preferences';
+import Results from './pages/Results';
+import Search from './pages/Search';
 import ListingDetail from './pages/ListingDetail';
-import Favorites    from './pages/Favorites';
-import Settings     from './pages/Settings';
+import Favorites from './pages/Favorites';
+import Settings from './pages/Settings';
 import Notifications from './pages/Notifications';
-import Booking      from './pages/Booking';
-import Maintenance  from './pages/Maintenance';
-import Compare      from './pages/Compare';
-import Admin        from './pages/Admin';
-import About        from './pages/About';
-import Contact      from './pages/Contact';
-import FAQ          from './pages/FAQ';
-import Privacy      from './pages/Privacy';
-import Terms        from './pages/Terms';
+import Booking from './pages/Booking';
+import Maintenance from './pages/Maintenance';
+import Compare from './pages/Compare';
+import Admin from './pages/Admin';
+import About from './pages/About';
+import Contact from './pages/Contact';
+import FAQ from './pages/FAQ';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
+import AuthCallback from './pages/AuthCallback';
+import DebugAuth from './pages/DebugAuth';
 
-const PUBLIC_ROUTES = ['/', '/login', '/about', '/contact', '/faq', '/privacy', '/terms'];
+const PUBLIC_ROUTES = ['/', '/login', '/about', '/contact', '/faq', '/privacy', '/terms', '/auth/callback', '/debug-auth'];
 
 function Router() {
   const [path, setPath] = useState(window.location.pathname);
@@ -50,26 +52,28 @@ function Router() {
 
   const renderPage = () => {
     if (listingMatch) return <ListingDetail id={listingMatch[1]} onNavigate={navigate} />;
-    if (bookingMatch) return <Booking       id={bookingMatch[1]} onNavigate={navigate} />;
+    if (bookingMatch) return <Booking id={bookingMatch[1]} onNavigate={navigate} />;
 
     switch (path) {
       case '/':
-      case '/login':        return <Login         onNavigate={navigate} />;
-      case '/dashboard':    return <Dashboard      onNavigate={navigate} />;
-      case '/preferences':  return <Preferences   onNavigate={navigate} />;
-      case '/results':      return <Results        onNavigate={navigate} />;
-      case '/search':       return <Search         onNavigate={navigate} />;
-      case '/favorites':    return <Favorites      onNavigate={navigate} />;
-      case '/settings':     return <Settings       onNavigate={navigate} />;
-      case '/notifications':return <Notifications  onNavigate={navigate} />;
-      case '/maintenance':  return <Maintenance    onNavigate={navigate} />;
-      case '/compare':      return <Compare        onNavigate={navigate} />;
-      case '/admin':        return <Admin          onNavigate={navigate} />;
-      case '/about':        return <About          onNavigate={navigate} />;
-      case '/contact':      return <Contact        onNavigate={navigate} />;
-      case '/faq':          return <FAQ            onNavigate={navigate} />;
-      case '/privacy':      return <Privacy        onNavigate={navigate} />;
-      case '/terms':        return <Terms          onNavigate={navigate} />;
+      case '/login': return <Login onNavigate={navigate} />;
+      case '/auth/callback': return <AuthCallback onNavigate={navigate} />;
+      case '/debug-auth': return <DebugAuth onNavigate={navigate} />;
+      case '/dashboard': return <Dashboard onNavigate={navigate} />;
+      case '/preferences': return <Preferences onNavigate={navigate} />;
+      case '/results': return <Results onNavigate={navigate} />;
+      case '/search': return <Search onNavigate={navigate} />;
+      case '/favorites': return <Favorites onNavigate={navigate} />;
+      case '/settings': return <Settings onNavigate={navigate} />;
+      case '/notifications': return <Notifications onNavigate={navigate} />;
+      case '/maintenance': return <Maintenance onNavigate={navigate} />;
+      case '/compare': return <Compare onNavigate={navigate} />;
+      case '/admin': return <Admin onNavigate={navigate} />;
+      case '/about': return <About onNavigate={navigate} />;
+      case '/contact': return <Contact onNavigate={navigate} />;
+      case '/faq': return <FAQ onNavigate={navigate} />;
+      case '/privacy': return <Privacy onNavigate={navigate} />;
+      case '/terms': return <Terms onNavigate={navigate} />;
       default:
         return (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-on-surface-variant">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { getListing } from '../data/listings';
 import { useFavorites } from '../context/FavoritesContext';
+import AmenityMap from '../components/map/AmenityMap';
 
 export default function ListingDetail({ id, onNavigate }) {
   const listing = getListing(id);
@@ -133,33 +134,9 @@ export default function ListingDetail({ id, onNavigate }) {
           <section>
             <h2 className="text-2xl font-bold text-on-surface mb-6">Nearby Amenities</h2>
 
-            {/* Mini map placeholder */}
-            <div className="bg-surface-container rounded-xl mb-6 relative overflow-hidden editorial-shadow" style={{ height: '200px' }}>
-              <div className="absolute inset-0 opacity-20"
-                style={{
-                  backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 19px, #D0D3E6 19px, #D0D3E6 20px),
-                                    repeating-linear-gradient(90deg, transparent, transparent 19px, #D0D3E6 19px, #D0D3E6 20px)`,
-                }}
-              />
-              {listing.amenities.map((a, i) => {
-                const positions = [
-                  { top: '30%', left: '40%' }, { top: '55%', left: '65%' },
-                  { top: '20%', left: '70%' }, { top: '65%', left: '30%' },
-                  { top: '40%', left: '20%' },
-                ];
-                const pos = positions[i] || { top: '50%', left: '50%' };
-                return (
-                  <div key={a.name} className="absolute" style={{ top: pos.top, left: pos.left, transform: 'translate(-50%, -50%)' }}>
-                    <div className="bg-surface-container-lowest rounded-full p-1.5 editorial-shadow">
-                      <span className="material-symbols-outlined text-primary text-[16px]">{a.icon}</span>
-                    </div>
-                  </div>
-                );
-              })}
-              {/* Center pin for the property */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                <span className="material-symbols-outlined text-primary text-[32px]" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
-              </div>
+            {/* Amenity map */}
+            <div className="rounded-xl mb-6 overflow-hidden editorial-shadow" style={{ height: '220px' }}>
+              <AmenityMap listing={listing} />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

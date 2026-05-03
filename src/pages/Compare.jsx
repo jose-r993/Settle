@@ -42,16 +42,23 @@ function ScoreBar({ score, color = 'bg-primary' }) {
   );
 }
 
+import NeighborhoodMap from '../components/map/NeighborhoodMap';
+
 export default function Compare({ onNavigate }) {
   return (
     <div className="pt-32 pb-24 px-8 max-w-screen-2xl mx-auto w-full">
 
-      <header className="mb-12">
+      <header className="mb-10">
         <h1 className="text-6xl font-extrabold tracking-tight text-on-surface mb-4">Compare Neighborhoods</h1>
         <p className="text-xl text-on-surface-variant font-medium max-w-2xl leading-relaxed">
           See how Dallas neighborhoods stack up side by side across safety, rent, walkability, and commute.
         </p>
       </header>
+
+      {/* Neighborhood map */}
+      <div className="rounded-2xl overflow-hidden editorial-shadow mb-12" style={{ height: '320px' }}>
+        <NeighborhoodMap neighborhoods={NEIGHBORHOODS} />
+      </div>
 
       {/* Comparison grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">

@@ -1,10 +1,57 @@
 import { useState } from 'react';
+import { usePreferences } from '../context/PreferencesContext';
+import { useFavorites } from '../context/FavoritesContext';
+
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+async function parsePrefsWithGemini(input) {
+  const prompt = `You are a preference parser for an apartment search app. Extract structured preferences from the user's natural language input.
+
+User input: "${input}"
+
+Return ONLY valid JSON with this exact structure (use null for any field not mentioned):
+{
+  "keywords": ["keyword1", "keyword2"],
+  "budget": 2000,
+  "commute": 30,
+  "safety": "high"
+}
+
+Rules:
+- keywords: short amenity/feature labels extracted from the input (e.g. "Rooftop", "Pet Friendly", "Natural Light", "In-Unit Laundry"). Empty array if none mentioned.
+- budget: monthly rent cap in dollars as a plain number, or null
+- commute: max commute in minutes as a number between 5 and 60, or null
+- safety: one of "low", "medium", "high", or null`;
+
+  if (!GEMINI_API_KEY) throw new Error('VITE_GEMINI_API_KEY not set');
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gemini ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  let text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
+  text = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
+  return JSON.parse(text);
+}
 
 const RECENTLY_VIEWED = [
-  { id: '1', price: '$2,350', rating: 4.8, neighborhood: 'Downtown, Dallas',       beds: 2, baths: 1, sqft: 850,  image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80' },
-  { id: '2', price: '$2,100', rating: 4.9, neighborhood: 'Uptown, Dallas',          beds: 1, baths: 1, sqft: 620,  image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80' },
-  { id: '3', price: '$2,450', rating: 4.7, neighborhood: 'Deep Ellum, Dallas',      beds: 2, baths: 2, sqft: 1100, image: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600&q=80' },
-  { id: '4', price: '$2,275', rating: 4.8, neighborhood: 'Lower Greenville, Dallas',beds: 1, baths: 1, sqft: 780,  image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&q=80' },
+  { id: '1', name: 'The McKenzie Luxury Highrise', price: '$2,350', rating: 4.8, neighborhood: 'Downtown, Dallas',        beds: 2, baths: 1, sqft: 850,  image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80' },
+  { id: '2', name: 'Loft 404 Apartments',          price: '$2,100', rating: 4.9, neighborhood: 'Uptown, Dallas',           beds: 1, baths: 1, sqft: 620,  image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80' },
+  { id: '3', name: 'The Katy Trail Apartments',    price: '$2,450', rating: 4.7, neighborhood: 'Deep Ellum, Dallas',       beds: 2, baths: 2, sqft: 1100, image: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600&q=80' },
+  { id: '4', name: 'The Alton Oak',                price: '$2,275', rating: 4.8, neighborhood: 'Lower Greenville, Dallas', beds: 1, baths: 1, sqft: 780,  image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&q=80' },
 ];
 
 const FOCUS = [
@@ -20,9 +67,47 @@ const IMPROVEMENTS = [
 ];
 
 export default function Dashboard({ onNavigate }) {
-  const [refine, setRefine]     = useState('');
-  const [favorites, setFavorites] = useState({ '1': true });
-  const toggleFav = (id) => setFavorites(f => ({ ...f, [id]: !f[id] }));
+  const [refine, setRefine] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState(null);
+  const { prefs, updatePrefs } = usePreferences();
+  const { favorites, toggleFav } = useFavorites();
+  const safetyLabel = prefs.safety.charAt(0).toUpperCase() + prefs.safety.slice(1);
+  const keywords = prefs.keywords ?? [];
+
+  const handleRefine = async () => {
+    const trimmed = refine.trim();
+    if (!trimmed) return;
+    setAiLoading(true);
+    setAiSummary(null);
+    try {
+      const parsed = await parsePrefsWithGemini(trimmed);
+      const updates = {};
+      const changes = [];
+
+      if (parsed.budget)   { updates.budget = parsed.budget;   changes.push(`Budget → $${parsed.budget.toLocaleString()}/mo`); }
+      if (parsed.commute)  { updates.commute = parsed.commute; changes.push(`Commute → max ${parsed.commute} min`); }
+      if (parsed.safety)   { updates.safety = parsed.safety;   changes.push(`Safety → ${parsed.safety}`); }
+
+      const newKeywords = (parsed.keywords ?? []).filter(k => k && !keywords.includes(k));
+      if (newKeywords.length) {
+        updates.keywords = [...keywords, ...newKeywords];
+        changes.push(`Added: ${newKeywords.join(', ')}`);
+      }
+
+      if (Object.keys(updates).length) updatePrefs(updates);
+      setAiSummary(changes.length ? changes : ['No new preferences detected — try being more specific.']);
+    } catch (err) {
+      console.error('[Refine search]', err);
+      if (!keywords.includes(trimmed)) updatePrefs({ keywords: [...keywords, trimmed] });
+      setAiSummary([`Saved "${trimmed}" as a keyword`]);
+    }
+    setRefine('');
+    setAiLoading(false);
+  };
+
+  const removeKeyword = (kw) =>
+    updatePrefs({ keywords: keywords.filter(k => k !== kw) });
 
   return (
     <div className="pt-32 pb-24 px-8 max-w-screen-2xl mx-auto w-full">
@@ -41,9 +126,9 @@ export default function Dashboard({ onNavigate }) {
       {/* ── Preference Summary (surface-container-low cards on surface bg) ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-16">
         {[
-          { icon: 'payments',      label: 'Budget',  value: 'Under $2,500/mo' },
-          { icon: 'directions_car',label: 'Commute', value: 'Max 30 mins'     },
-          { icon: 'verified_user', label: 'Safety',  value: 'High safety rating' },
+          { icon: 'payments',      label: 'Budget',  value: `Under $${prefs.budget.toLocaleString()}/mo` },
+          { icon: 'directions_car',label: 'Commute', value: `Max ${prefs.commute} min`                  },
+          { icon: 'verified_user', label: 'Safety',  value: `${safetyLabel} safety rating`              },
         ].map(({ icon, label, value }) => (
           /* surface-container-low sits on surface — tonal shift creates boundary, no border */
           <div
@@ -96,23 +181,74 @@ export default function Dashboard({ onNavigate }) {
             </div>
           </section>
 
-          {/* Refine search — surface-container-low tonal section */}
+          {/* Refine search — Gemini-powered */}
           <section className="bg-surface-container-low p-10 rounded-xl">
-            <h3 className="text-2xl font-bold text-on-surface mb-6">Refine your search</h3>
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-2xl font-bold text-on-surface">Refine your search</h3>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[0.7rem] font-bold uppercase tracking-[0.1em]">
+                <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
+                AI
+              </span>
+            </div>
+            <p className="text-sm text-on-surface-variant font-medium mb-6">
+              Describe what you're looking for in plain language — AI will update your preferences automatically.
+            </p>
             <div className="flex flex-col md:flex-row gap-4">
-              {/* Input: surface-container-lowest bg + shadow-sm + focus ring */}
               <input
                 value={refine}
                 onChange={e => setRefine(e.target.value)}
-                className="flex-grow bg-surface-container-lowest shadow-sm rounded-lg px-6 py-4 text-on-surface placeholder:text-outline font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-shadow"
-                placeholder="Add keywords (e.g. 'Rooftop garden', 'In-unit laundry')"
+                onKeyDown={e => e.key === 'Enter' && !aiLoading && handleRefine()}
+                disabled={aiLoading}
+                className="flex-grow bg-surface-container-lowest shadow-sm rounded-lg px-6 py-4 text-on-surface placeholder:text-outline font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-shadow disabled:opacity-50"
+                placeholder="e.g. 'Quiet place near a park, under $2k, pet-friendly'"
                 type="text"
               />
-              {/* Primary button: gradient, rounded-lg (4px) */}
-              <button className="bg-gradient-to-br from-primary to-primary-container text-white px-8 py-4 rounded-lg font-bold hover:shadow-lg transition-all active:scale-95 whitespace-nowrap">
-                Update Results
+              <button
+                onClick={handleRefine}
+                disabled={aiLoading || !refine.trim()}
+                className="bg-gradient-to-br from-primary to-primary-container text-white px-8 py-4 rounded-lg font-bold hover:shadow-lg transition-all active:scale-95 whitespace-nowrap disabled:opacity-60 disabled:active:scale-100 flex items-center gap-2"
+              >
+                {aiLoading
+                  ? <><span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> Analyzing…</>
+                  : 'Update Results'
+                }
               </button>
             </div>
+
+            {/* AI result summary */}
+            {aiSummary && (
+              <div className="mt-4 bg-primary/5 rounded-xl px-5 py-4 flex items-start gap-3">
+                <span className="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5">auto_awesome</span>
+                <div>
+                  <p className="text-[0.75rem] font-bold uppercase tracking-[0.1em] text-primary mb-1">Preferences updated</p>
+                  <ul className="space-y-0.5">
+                    {aiSummary.map(line => (
+                      <li key={line} className="text-sm text-on-surface-variant font-medium">{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {keywords.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {keywords.map(kw => (
+                  <span
+                    key={kw}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[0.75rem] font-bold uppercase tracking-[0.1em]"
+                  >
+                    {kw}
+                    <button
+                      onClick={() => removeKeyword(kw)}
+                      className="hover:text-primary-container transition-colors leading-none"
+                      aria-label={`Remove ${kw}`}
+                    >
+                      <span className="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </section>
         </div>
 
@@ -172,7 +308,7 @@ export default function Dashboard({ onNavigate }) {
           {/* Headline (2.25rem / extrabold) */}
           <h2 className="text-4xl font-extrabold tracking-tight text-on-surface">Recently Viewed</h2>
           <button onClick={() => onNavigate('/search')} className="text-primary font-bold hover:underline flex items-center gap-2 text-sm">
-            View All History
+            Search for More Places
             <span className="material-symbols-outlined text-sm">arrow_forward</span>
           </button>
         </div>
@@ -208,15 +344,15 @@ export default function Dashboard({ onNavigate }) {
               </div>
 
               <div className="p-5">
-                <div className="flex justify-between items-center mb-2">
-                  {/* Sub-headline weight for price */}
+                <h3 className="font-bold text-on-surface text-base leading-tight mb-1">{listing.name}</h3>
+                <p className="text-on-surface-variant text-sm font-medium mb-2">{listing.neighborhood}</p>
+                <div className="flex justify-between items-center mb-3">
                   <span className="text-xl font-bold text-on-surface">{listing.price}/mo</span>
                   <div className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-tertiary text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                     <span className="text-sm font-semibold text-on-surface">{listing.rating}</span>
                   </div>
                 </div>
-                <p className="text-on-surface-variant font-medium mb-4">{listing.neighborhood}</p>
                 {/* Label typography */}
                 <div className="flex gap-3 text-[0.7rem] font-bold uppercase tracking-[0.1em] text-outline">
                   <span>{listing.beds} bd</span><span>·</span>

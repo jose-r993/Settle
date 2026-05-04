@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { LISTINGS } from '../data/listings';
 import { useFavorites } from '../context/FavoritesContext';
 import { usePreferences } from '../context/PreferencesContext';
@@ -5,17 +6,92 @@ import { usePreferences } from '../context/PreferencesContext';
 const featured = LISTINGS[0];
 const grid     = LISTINGS.slice(1, 7);
 
-const WHY = [
-  'Close to your workplace — all results within your commute preference',
-  'Within your budget range with no hidden fees',
-  'High safety ratings in verified neighborhoods',
-];
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+const SAFETY_DESC = {
+  low:    'flexible on safety ratings',
+  medium: 'safe, verified neighborhoods',
+  high:   'only the highest-rated safety areas',
+};
+
+function getLocalWhyPoints(prefs) {
+  const points = [
+    `All results are priced within your $${prefs.budget.toLocaleString()}/mo budget.`,
+    `Every listing is within your ${prefs.commute}-minute max commute.`,
+    `Neighborhoods are filtered for ${SAFETY_DESC[prefs.safety] ?? prefs.safety} based on your safety priority.`,
+  ];
+  if (prefs.keywords?.length) {
+    points[2] = `Results are matched to your feature preferences: ${prefs.keywords.slice(0, 3).join(', ')}.`;
+  }
+  return points;
+}
+
+async function generateWhyPoints(prefs) {
+  if (!GEMINI_API_KEY) throw new Error('VITE_GEMINI_API_KEY not set');
+
+  const keywordNote = prefs.keywords?.length
+    ? `Feature preferences: ${prefs.keywords.join(', ')}.`
+    : '';
+
+  const prompt = `You are a helpful apartment search assistant. Write exactly 3 short bullet points (one sentence each) explaining why these apartment results are a great match for this user. Be specific and reference their actual numbers.
+
+User preferences:
+- Budget: up to $${prefs.budget.toLocaleString()}/mo
+- Max commute: ${prefs.commute} minutes
+- Safety priority: ${prefs.safety}
+${keywordNote}
+
+Return ONLY a JSON array of 3 strings, no markdown, no code fences. Example:
+["Point one.", "Point two.", "Point three."]`;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gemini ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  let text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  // Strip markdown fences if present
+  text = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
+  const points = JSON.parse(text);
+  if (!Array.isArray(points) || points.length === 0) throw new Error('Unexpected response shape');
+  return points;
+}
 
 export default function Results({ onNavigate }) {
   const { favorites, toggleFav } = useFavorites();
   const { prefs } = usePreferences();
 
   const safetyLabel = prefs.safety.charAt(0).toUpperCase() + prefs.safety.slice(1);
+
+  const prefsKey = `${prefs.budget}-${prefs.commute}-${prefs.safety}-${(prefs.keywords ?? []).join(',')}`;
+  const [fetchedKey, setFetchedKey] = useState('');
+  const [whyPoints, setWhyPoints] = useState(() => getLocalWhyPoints(prefs));
+  const whyLoading = fetchedKey !== prefsKey;
+
+  useEffect(() => {
+    let cancelled = false;
+    generateWhyPoints(prefs)
+      .then(points => {
+        if (!cancelled) { setWhyPoints(points); setFetchedKey(prefsKey); }
+      })
+      .catch(err => {
+        console.error('[Why These Results]', err);
+        if (!cancelled) { setWhyPoints(getLocalWhyPoints(prefs)); setFetchedKey(prefsKey); }
+      });
+    return () => { cancelled = true; };
+  }, [prefsKey]); // eslint-disable-line
 
   const PREFS = [
     { icon: 'payments',       label: 'Budget',  value: `Under $${prefs.budget.toLocaleString()}/mo` },
@@ -153,17 +229,37 @@ export default function Results({ onNavigate }) {
         {/* Right sidebar */}
         <aside className="lg:col-span-4 space-y-6">
 
-          {/* Why these results */}
+          {/* Why these results — Gemini-generated */}
           <div className="bg-surface-container-low p-8 rounded-xl editorial-shadow">
-            <p className="text-[0.75rem] font-bold uppercase tracking-[0.1em] text-on-surface-variant mb-6">Why These Results?</p>
-            <div className="space-y-4">
-              {WHY.map(text => (
-                <div key={text} className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-primary bg-primary/10 rounded-full p-1 text-sm shrink-0 mt-0.5">check</span>
-                  <p className="text-sm text-on-surface-variant font-medium leading-relaxed">{text}</p>
-                </div>
-              ))}
+            <div className="flex items-center gap-2 mb-6">
+              <p className="text-[0.75rem] font-bold uppercase tracking-[0.1em] text-on-surface-variant">Why These Results?</p>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[0.65rem] font-bold uppercase tracking-[0.1em]">
+                <span className="material-symbols-outlined text-[12px]">auto_awesome</span>
+                AI
+              </span>
             </div>
+            {whyLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 shrink-0 animate-pulse" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 bg-surface-container rounded animate-pulse w-full" />
+                      <div className="h-3 bg-surface-container rounded animate-pulse w-3/4" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {whyPoints.map((text, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <span className="material-symbols-outlined text-primary bg-primary/10 rounded-full p-1 text-sm shrink-0 mt-0.5">check</span>
+                    <p className="text-sm text-on-surface-variant font-medium leading-relaxed">{text}</p>
+                  </div>
+                ))}
+              </div>
+            )}
             <button
               onClick={() => onNavigate('/preferences')}
               className="mt-6 w-full text-primary text-sm font-bold hover:underline flex items-center justify-center gap-1"

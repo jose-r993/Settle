@@ -48,16 +48,16 @@ Rules:
 }
 
 const RECENTLY_VIEWED = [
-  { id: '1', name: 'The McKenzie Luxury Highrise', price: '$2,350', rating: 4.8, neighborhood: 'Downtown, Dallas',        beds: 2, baths: 1, sqft: 850,  image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80' },
-  { id: '2', name: 'Loft 404 Apartments',          price: '$2,100', rating: 4.9, neighborhood: 'Uptown, Dallas',           beds: 1, baths: 1, sqft: 620,  image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80' },
-  { id: '3', name: 'The Katy Trail Apartments',    price: '$2,450', rating: 4.7, neighborhood: 'Deep Ellum, Dallas',       beds: 2, baths: 2, sqft: 1100, image: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600&q=80' },
-  { id: '4', name: 'The Alton Oak',                price: '$2,275', rating: 4.8, neighborhood: 'Lower Greenville, Dallas', beds: 1, baths: 1, sqft: 780,  image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&q=80' },
+  { id: '1', name: 'The McKenzie Luxury Highrise', price: '$2,350', rating: 4.8, neighborhood: 'Downtown, Dallas', beds: 2, baths: 1, sqft: 850, image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80' },
+  { id: '2', name: 'Loft 404 Apartments', price: '$2,100', rating: 4.9, neighborhood: 'Uptown, Dallas', beds: 1, baths: 1, sqft: 620, image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80' },
+  { id: '3', name: 'The Katy Trail Apartments', price: '$2,450', rating: 4.7, neighborhood: 'Deep Ellum, Dallas', beds: 2, baths: 2, sqft: 1100, image: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600&q=80' },
+  { id: '4', name: 'The Alton Oak', price: '$2,275', rating: 4.8, neighborhood: 'Lower Greenville, Dallas', beds: 1, baths: 1, sqft: 780, image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&q=80' },
 ];
 
 const FOCUS = [
-  { label: 'Safety Score',    pct: '+15%' },
-  { label: 'Walkability',     pct: '+22%' },
-  { label: 'Modern Finishes', pct: '+8%'  },
+  { label: 'Safety Score', pct: '+15%' },
+  { label: 'Walkability', pct: '+22%' },
+  { label: 'Modern Finishes', pct: '+8%' },
 ];
 
 const IMPROVEMENTS = [
@@ -85,9 +85,9 @@ export default function Dashboard({ onNavigate }) {
       const updates = {};
       const changes = [];
 
-      if (parsed.budget)   { updates.budget = parsed.budget;   changes.push(`Budget → $${parsed.budget.toLocaleString()}/mo`); }
-      if (parsed.commute)  { updates.commute = parsed.commute; changes.push(`Commute → max ${parsed.commute} min`); }
-      if (parsed.safety)   { updates.safety = parsed.safety;   changes.push(`Safety → ${parsed.safety}`); }
+      if (parsed.budget) { updates.budget = parsed.budget; changes.push(`Budget → $${parsed.budget.toLocaleString()}/mo`); }
+      if (parsed.commute) { updates.commute = parsed.commute; changes.push(`Commute → max ${parsed.commute} min`); }
+      if (parsed.safety) { updates.safety = parsed.safety; changes.push(`Safety → ${parsed.safety}`); }
 
       const newKeywords = (parsed.keywords ?? []).filter(k => k && !keywords.includes(k));
       if (newKeywords.length) {
@@ -126,9 +126,9 @@ export default function Dashboard({ onNavigate }) {
       {/* ── Preference Summary (surface-container-low cards on surface bg) ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-16">
         {[
-          { icon: 'payments',      label: 'Budget',  value: `Under $${prefs.budget.toLocaleString()}/mo` },
-          { icon: 'directions_car',label: 'Commute', value: `Max ${prefs.commute} min`                  },
-          { icon: 'verified_user', label: 'Safety',  value: `${safetyLabel} safety rating`              },
+          { icon: 'payments', label: 'Budget', value: `Under $${prefs.budget.toLocaleString()}/mo` },
+          { icon: 'directions_car', label: 'Commute', value: `Max ${prefs.commute} min` },
+          { icon: 'verified_user', label: 'Safety', value: `${safetyLabel} safety rating` },
         ].map(({ icon, label, value }) => (
           /* surface-container-low sits on surface — tonal shift creates boundary, no border */
           <div
@@ -278,6 +278,30 @@ export default function Dashboard({ onNavigate }) {
               <p className="text-on-surface-variant text-sm leading-relaxed">
                 Our algorithm synthesizes neighborhood crime data, transit availability, and current market trends to ensure your top results offer long-term lifestyle stability.
               </p>
+            </div>
+          </div>
+
+          {/* Maintenance Request Card */}
+          <div className="bg-surface-container-low rounded-xl p-8 overflow-hidden relative group editorial-shadow">
+            <div className="absolute -bottom-6 -right-6 opacity-10 group-hover:scale-110 transition-transform duration-500 pointer-events-none">
+              <span className="material-symbols-outlined text-[120px] text-primary">build</span>
+            </div>
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="bg-primary/10 w-10 h-10 rounded-lg flex items-center justify-center">
+                  <span className="material-symbols-outlined text-primary text-xl">build</span>
+                </div>
+                <h3 className="text-xl font-bold text-on-surface">Maintenance</h3>
+              </div>
+              <p className="text-on-surface-variant text-sm mb-6 leading-relaxed font-medium">
+                Need something fixed? Submit a maintenance request and track its status.
+              </p>
+              <button
+                onClick={() => onNavigate('/maintenance')}
+                className="w-full bg-primary text-white py-3 rounded-lg font-bold text-sm transition-transform active:scale-95 hover:bg-primary-container"
+              >
+                Submit Request
+              </button>
             </div>
           </div>
 
